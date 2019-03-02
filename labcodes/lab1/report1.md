@@ -178,5 +178,143 @@
 
 ## 练习3：分析bootloader进入保护模式的过程
 
+- 为何开启A20，如果开启A20
 
+  In file **boot/bootasm.S**:
+
+  ```assembly
+  29     seta20.1:     
+  30     inb $0x64, %al                                  # Wait for not busy(8042 input buffer empty).
+  31     testb $0x2, %al
+  32     jnz seta20.1
+  33               
+  34     movb $0xd1, %al                                 # 0xd1 -> port 0x64
+  35     outb %al, $0x64                                 # 0xd1 means: write data to 8042's P2 port
+  36               
+  37 seta20.2:     
+  38     inb $0x64, %al                                  # Wait for not busy(8042 input buffer empty).
+  39     testb $0x2, %al
+  40     jnz seta20.2
+  41               
+  42     movb $0xdf, %al                                 # 0xdf -> port 0x60
+  43     outb %al, $0x60                                 # 0xdf = 11011111, means set P2's A20 bit(the 1 bit) to 1
+  
+  ```
+
+  **为何开启A20**：实模式下只有1MB内存空间可见，切换到保护模式时需要取消限制
+
+  **如何开启A20**：
+
+  ```assembly
+  movb $0xdf, %al
+  outb %al, $0x60
+  ```
+
+  将0xdf(11011111)赋给0x60端口，表示将A20置1，可以访问4GB内存空间
+
+- 如何初始化GDT表
+
+  ```assembly
+  lgdt gdtdesc
+  ```
+
+- 如何使能和进入保护模式
+
+  ```assembly
+  orl $CR0_PE_ON, %eax 
+  ```
+
+  将cr0寄存器置1进入保护模式
+
+## 练习4：分析bootloader加载ELF格式的OS的过程
+
+- bootloader如何读取硬盘扇区？
+
+  在boot/bootmain.c中，通过函数readsect读取512字节的数据
+
+  ```c
+   44 static void
+   45 readsect(void *dst, uint32_t secno) {
+   46     // wait for disk to be ready
+   47     waitdisk();
+   48       
+   49     outb(0x1F2, 1);                         // count = 1
+   50     outb(0x1F3, secno & 0xFF);
+   51     outb(0x1F4, (secno >> 8) & 0xFF);
+   52     outb(0x1F5, (secno >> 16) & 0xFF);
+   53     outb(0x1F6, ((secno >> 24) & 0xF) | 0xE0);
+   54     outb(0x1F7, 0x20);                      // cmd 0x20 - read sectors
+   55       
+   56     // wait for disk to be ready
+   57     waitdisk();
+   58     
+   59     // read a sector
+   60     insl(0x1F0, dst, SECTSIZE / 4);
+   61 }   
+  ```
+
+  然后用readseg函数封装了readsect函数，可以一次读取多个扇区
+
+  ```c
+  /* *                            
+   64  * readseg - read @count bytes at @offset from kernel into virtual address @va,
+   65  * might copy more than asked.  
+   66  * */                           
+   67 static void                     
+   68 readseg(uintptr_t va, uint32_t count, uint32_t offset) {
+   69     uintptr_t end_va = va + count;
+   70                                 
+   71     // round down to sector boundary
+   72     va -= offset % SECTSIZE;    
+   73                                 
+   74     // translate from bytes to sectors; kernel starts at sector 1
+   75     uint32_t secno = (offset / SECTSIZE) + 1;
+   76                                 
+   77     // If this is too slow, we could read lots of sectors at a time.
+   78     // We'd write more to memory than asked, but it doesn't matter --
+   79     // we load in increasing order.
+   80     for (; va < end_va; va += SECTSIZE, secno ++) {
+   81         readsect((void *)va, secno);                                                82     }                           
+   83 }             
+  ```
+
+- bootloader如何加载ELF格式的OS？
+
+  用e_magic属性判断扇区是否是ELF格式
+
+  ```c
+   /* bootmain - the entry of bootloader */
+   86 void                           
+   87 bootmain(void) {
+   88     // 读取扇区头
+   89     readseg((uintptr_t)ELFHDR, SECTSIZE * 8, 0);
+   90  
+   91     // 判断是否是ELF格式
+   92     if (ELFHDR->e_magic != ELF_MAGIC) {
+   93         goto bad;
+   94     }
+   95  
+   96     struct proghdr *ph, *eph;
+   97  
+   98     // 分扇区加载OS
+   99     ph = (struct proghdr *)((uintptr_t)ELFHDR + ELFHDR->e_phoff);
+  100     eph = ph + ELFHDR->e_phnum;
+  101     for (; ph < eph; ph ++) {
+  102         readseg(ph->p_va & 0xFFFFFF, ph->p_memsz, ph->p_offset);
+  103     }
+  104  
+  105     // 跳转到OS的代码
+  106     // note: does not return
+  107     ((void (*)(void))(ELFHDR->e_entry & 0xFFFFFF))();
+  108  
+  109 bad:
+  110     outw(0x8A00, 0x8A00);
+  111     outw(0x8A00, 0x8E00);
+  112  
+  113     /* do nothing */
+  114     while (1);
+  115	}
+  ```
+
+## 练习5： 实现函数调用堆栈跟踪函数
 
