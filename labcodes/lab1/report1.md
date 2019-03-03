@@ -458,5 +458,5 @@
 
   完成上述两处修改后，在命令行运行make qemu，可以看到操作系统约1秒会打印一次"100 ticks"，且会响应键盘输入。
 
-  ![1551595123379](/home/yuxuanwei/.config/Typora/typora-user-images/1551595123379.png)
+  ![1551595123379](./pictures/ex1_6.png)
 
