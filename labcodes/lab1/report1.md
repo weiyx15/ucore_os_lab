@@ -401,3 +401,62 @@
 
 ## 练习6：完善中断初始化和处理
 
+- 中断描述符表中一个表项占多少字节？其中哪几位代表中断处理代码的入口？
+
+  在文件./kern/mm/mmu.h中结构体gatedesc描述了一个中断描述符表项。
+
+  ```c
+  /* Gate descriptors for interrupts and traps */
+  struct gatedesc {
+      unsigned gd_off_15_0 : 16;        // low 16 bits of offset in segment
+      unsigned gd_ss : 16;            // segment selector
+      unsigned gd_args : 5;            // # args, 0 for interrupt/trap gates
+      unsigned gd_rsv1 : 3;            // reserved(should be zero I guess)
+      unsigned gd_type : 4;            // type(STS_{TG,IG32,TG32})
+      unsigned gd_s : 1;                // must be 0 (system)
+      unsigned gd_dpl : 2;            // descriptor(meaning new) privilege level
+      unsigned gd_p : 1;                // Present
+      unsigned gd_off_31_16 : 16;        // high bits of offset in segment
+  };
+  ```
+
+  一个中断描述符表项占64位(即8字节)。16bit(即2字节)的属性gd_ss表示段选择子，2个16bit(即2字节)的属性gd_off_31_16, gd_off_15_0拼起来(共32bit，4字节)表示段内偏移。
+
+- 编程完善对中断向量表进行初始化的函数idt_init
+
+  ```c
+  void
+  idt_init(void) {
+      extern uintptr_t __vectors[];                               // 中断向量表
+      int i = 0;
+      for (i=0; i<256; i++)
+      {
+          SETGATE(idt[i], 0, GD_KTEXT, __vectors[i], DPL_KERNEL); // 除系统调用中断外的所有中断都是内核态权限
+      }
+      SETGATE(idt[T_SWITCH_TOK], 0, GD_KTEXT, __vectors[T_SWITCH_TOK], DPL_USER);       // 系统调用中断是用户态权限
+      lidt(&idt_pd);                                              // 加载中断描述符表
+  }
+  ```
+
+  - 首先从vector.S中引入__vectors表示中断向量表
+  - 然后用SETGATE宏对中断描述符表项进行初始化
+  - 与其他中断不同，系统调用中断的权限为用户态权限
+  - 用lidt加载中断描述表
+
+- 编程完善trap.c中的中断处理函数trap，在对时钟中断进行处理的部分，使操作系统遇到100次时钟中断后，向屏幕打印一行"100 ticks".
+
+  ```c
+  case IRQ_OFFSET + IRQ_TIMER:
+  	ticks++;
+      if (ticks % TICK_NUM == 0)
+      {
+      	print_ticks();
+          ticks = 0;
+  	}
+      break;
+  ```
+
+  完成上述两处修改后，在命令行运行make qemu，可以看到操作系统约1秒会打印一次"100 ticks"，且会响应键盘输入。
+
+  ![1551595123379](/home/yuxuanwei/.config/Typora/typora-user-images/1551595123379.png)
+
