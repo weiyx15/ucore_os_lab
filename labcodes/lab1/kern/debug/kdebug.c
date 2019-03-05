@@ -302,7 +302,7 @@ print_stackframe(void) {
       *           NOTICE: the calling funciton's return addr eip  = ss:[ebp+4]
       *                   the calling funciton's ebp = ss:[ebp]
       */
-     uint32_t ebp = read_eip();
+     uint32_t ebp = read_ebp();             // in file: ../../lib/x86.h
      uint32_t eip = read_eip();
 
      int i, j;
@@ -315,8 +315,8 @@ print_stackframe(void) {
         }
         cprintf("\n");
         print_debuginfo(eip-1);
-        eip = (uint32_t*)(ebp+4);
-        ebp = (uint32_t*)(ebp);
+        eip = ((uint32_t*)(ebp+4))[0];
+        ebp = ((uint32_t*)(ebp))[0];
      }
 }
 

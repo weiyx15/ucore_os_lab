@@ -335,7 +335,7 @@
         *           NOTICE: the calling funciton's return addr eip  = ss:[ebp+4]
         *                   the calling funciton's ebp = ss:[ebp]
         */
-       uint32_t ebp = read_eip();
+       uint32_t ebp = read_ebp();             // in file: ../../lib/x86.h
        uint32_t eip = read_eip();
   
        int i, j;
@@ -348,8 +348,8 @@
           }
           cprintf("\n");
           print_debuginfo(eip-1);
-          eip = (uint32_t*)(ebp+4);
-          ebp = (uint32_t*)(ebp);
+          eip = ((uint32_t*)(ebp+4))[0];
+          ebp = ((uint32_t*)(ebp))[0];
        }
   }
   ```
@@ -357,46 +357,23 @@
   命令行输入make qemu输出
 
   ```shell
-  ebp:00100a31 eip:00100a39 args:ffdce8f4 4589ffff ec45c7f0 00000000 
-      kern/debug/kdebug.c:306: print_stackframe+18
-  ebp:00100a31 eip:00100a35 args:ffdce8f4 4589ffff ec45c7f0 00000000 
-      kern/debug/kdebug.c:306: print_stackframe+14
-  ebp:00100a31 eip:00100a35 args:ffdce8f4 4589ffff ec45c7f0 00000000 
-      kern/debug/kdebug.c:306: print_stackframe+14
-  ebp:00100a31 eip:00100a35 args:ffdce8f4 4589ffff ec45c7f0 00000000 
-      kern/debug/kdebug.c:306: print_stackframe+14
-  ebp:00100a31 eip:00100a35 args:ffdce8f4 4589ffff ec45c7f0 00000000 
-      kern/debug/kdebug.c:306: print_stackframe+14
-  ebp:00100a31 eip:00100a35 args:ffdce8f4 4589ffff ec45c7f0 00000000 
-      kern/debug/kdebug.c:306: print_stackframe+14
-  ebp:00100a31 eip:00100a35 args:ffdce8f4 4589ffff ec45c7f0 00000000 
-      kern/debug/kdebug.c:306: print_stackframe+14
-  ebp:00100a31 eip:00100a35 args:ffdce8f4 4589ffff ec45c7f0 00000000 
-      kern/debug/kdebug.c:306: print_stackframe+14
-  ebp:00100a31 eip:00100a35 args:ffdce8f4 4589ffff ec45c7f0 00000000 
-      kern/debug/kdebug.c:306: print_stackframe+14
-  ebp:00100a31 eip:00100a35 args:ffdce8f4 4589ffff ec45c7f0 00000000 
-      kern/debug/kdebug.c:306: print_stackframe+14
-  ebp:00100a31 eip:00100a35 args:ffdce8f4 4589ffff ec45c7f0 00000000 
-      kern/debug/kdebug.c:306: print_stackframe+14
-  ebp:00100a31 eip:00100a35 args:ffdce8f4 4589ffff ec45c7f0 00000000 
-      kern/debug/kdebug.c:306: print_stackframe+14
-  ebp:00100a31 eip:00100a35 args:ffdce8f4 4589ffff ec45c7f0 00000000 
-      kern/debug/kdebug.c:306: print_stackframe+14
-  ebp:00100a31 eip:00100a35 args:ffdce8f4 4589ffff ec45c7f0 00000000 
-      kern/debug/kdebug.c:306: print_stackframe+14
-  ebp:00100a31 eip:00100a35 args:ffdce8f4 4589ffff ec45c7f0 00000000 
-      kern/debug/kdebug.c:306: print_stackframe+14
-  ebp:00100a31 eip:00100a35 args:ffdce8f4 4589ffff ec45c7f0 00000000 
-      kern/debug/kdebug.c:306: print_stackframe+14
-  ebp:00100a31 eip:00100a35 args:ffdce8f4 4589ffff ec45c7f0 00000000 
-      kern/debug/kdebug.c:306: print_stackframe+14
-  ebp:00100a31 eip:00100a35 args:ffdce8f4 4589ffff ec45c7f0 00000000 
-      kern/debug/kdebug.c:306: print_stackframe+14
-  ebp:00100a31 eip:00100a35 args:ffdce8f4 4589ffff ec45c7f0 00000000 
-      kern/debug/kdebug.c:306: print_stackframe+14
-  ebp:00100a31 eip:00100a35 args:ffdce8f4 4589ffff ec45c7f0 00000000 
-      kern/debug/kdebug.c:306: print_stackframe+14
+  Kernel executable memory footprint: 64KB
+  ebp:00007b38 eip:00100a3c args:0d300000 00940010 00940001 7b680001 
+      kern/debug/kdebug.c:306: print_stackframe+21
+  ebp:00007b48 eip:00100d30 args:007f0000 00000010 00000000 00000000 
+      kern/debug/kmonitor.c:125: mon_backtrace+10
+  ebp:00007b68 eip:0010007f args:00a10000 00000010 7b900000 00000000 
+      kern/init/init.c:48: grade_backtrace2+19
+  ebp:00007b88 eip:001000a1 args:00be0000 00000010 00000000 7bb4ffff 
+      kern/init/init.c:53: grade_backtrace1+27
+  ebp:00007ba8 eip:001000be args:00df0000 00000010 00000000 00000010 
+      kern/init/init.c:58: grade_backtrace0+19
+  ebp:00007bc8 eip:001000df args:00500000 00000010 00000000 00000000 
+      kern/init/init.c:63: grade_backtrace+26
+  ebp:00007be8 eip:00100050 args:7d6e0000 00000000 00000000 00000000 
+      kern/init/init.c:28: kern_init+79
+  ebp:00007bf8 eip:00007d6e args:7c4f0000 fcfa0000 d88ec031 d08ec08e 
+      <unknow>: -- 0x00007d6d --
   ```
 
 ## 练习6：完善中断初始化和处理
